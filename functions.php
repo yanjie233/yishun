@@ -37,6 +37,15 @@ function themeConfig($form)
     );
     $form->addInput($footerNote);
 
+    $cnMonth = new \Typecho\Widget\Helper\Form\Element\Radio(
+        'cnMonth',
+        ['1' => _t('中文（五月）'), '0' => _t('英文缩写（MAY）')],
+        '0',
+        _t('月份写法'),
+        _t('日期印章里的月份用中文还是英文缩写')
+    );
+    $form->addInput($cnMonth);
+
     $showReading = new \Typecho\Widget\Helper\Form\Element\Radio(
         'showReading',
         ['1' => _t('显示'), '0' => _t('隐藏')],
@@ -132,9 +141,20 @@ function yishun_date_parts($archive)
 {
     /* Widget 的 date() 是 echo，取属性里的 Date 对象才拿得到值 */
     $d = $archive->date;
+
+    /* 月份：默认英文缩写（MAY），主题设置里可以换成中文（五月） */
+    $cn = false;
+    try {
+        $cn = ((string) (\Widget\Options::alloc()->cnMonth ?? '')) === '1';
+    } catch (\Throwable $e) {
+        $cn = false;
+    }
+    $cnMonths = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
+    $month = $cn ? $cnMonths[(int) $d->format('n') - 1] : $d->format('M');
+
     return [
         'day'   => $d->format('d'),
-        'month' => $d->format('M'),
+        'month' => $month,
         'year'  => $d->format('Y'),
         'full'  => $d->format('Y-m-d'),
         'iso'   => $d->format('c'),

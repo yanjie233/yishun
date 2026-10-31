@@ -151,6 +151,22 @@ img { max-width: 100%; height: auto; }
     border-bottom-color: var(--stamp);
 }
 
+/* 中文月份：字距收一点，印章宽度放开，'十一月' 这类三字也放得下 */
+.has-cn-month .stamp {
+    /* 文字长度不定（八月 / 十一月），宽度跟着内容走；别让它被栅格拉满 */
+    width: fit-content;
+    min-width: 4.1rem;
+    justify-self: start;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+}
+
+.has-cn-month .stamp-month {
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
 /* ---------- 版面骨架 ---------- */
 .sheet {
     max-width: calc(var(--gutter) + var(--measure) + var(--pad) * 2);

@@ -51,6 +51,7 @@ git clone https://github.com/yanjie233/yishun.git yishun
 | 头像地址 | 站名左边的小圆头像；留空则用管理员邮箱的 Cravatar |
 | 页脚补充说明 | 版权行下面的一行小字 |
 | 显示阅读时长 | 按正文字数估算（中文约 400 字/分钟） |
+| 月份写法 | 日期印章里的月份用中文（八月）还是英文缩写（AUG） |
 | 备案号 / 备案链接 / 公安备案 | 填了才会出现在页脚 |
 | 网易云接口地址 | 自建 [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) 的地址，默认用作者的公共实例 |
 | 网易云 realIP | 取播放地址时必须带一个国内 IP，否则接口一律返回「暂无版权」 |

@@ -168,7 +168,8 @@ $wbLd = array_filter($wbLd, static fn($v) => $v !== null && $v !== '' && $v !== 
     echo $head;
     ?>
 </head>
-<body class="<?php echo $this->is('post') || $this->is('page') ? 'is-single' : 'is-list'; ?>">
+<?php $wbCnMonth = ((string) ($wbOptions->cnMonth ?? '')) === '1'; ?>
+<body class="<?php echo $this->is('post') || $this->is('page') ? 'is-single' : 'is-list'; ?><?php echo $wbCnMonth ? ' has-cn-month' : ''; ?>">
 
 <div class="progress" id="progress" aria-hidden="true"></div>
 
