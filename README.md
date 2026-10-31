@@ -30,12 +30,19 @@
 
 ## 安装
 
+**方式一：压缩包（推荐）**
+
+下载 [Release](https://github.com/yanjie233/yishun/releases) 里的 `yishun-theme-0.1.0.zip`，
+解压后得到 `yishun/` 目录，整个放进 `usr/themes/` 即可（文件名已经是 `yishun`，不用改名）。
+
+**方式二：git clone**
+
 ```bash
 cd usr/themes
-git clone https://github.com/yanjie233/yishun.git   # 或直接把 yishun 目录拷进去
+git clone https://github.com/yanjie233/yishun.git yishun
 ```
 
-后台 → 控制台 → 外观 → 启用「一瞬」。
+然后后台 → 控制台 → 外观 → 启用「一瞬」。
 
 ## 主题设置
 
