@@ -34,7 +34,7 @@
     --tip-success-bg: #e6ebe0; --tip-success-fg: #3d5a43; --tip-success-line: #4a6b4f;
     --tip-info-bg: #e3e8ea;    --tip-info-fg: #1a4560;    --tip-info-line: #1f4e6b;
     --tip-warning-bg: #ece5d6; --tip-warning-fg: #7d5518; --tip-warning-line: #a8762c;
-    --tip-error-bg: #eadcd8;   --tip-error-fg: #8f3324;   --tip-error-line: #a63c2c;
+    --tip-error-bg: #f4dad5;   --tip-error-fg: #8d2416;   --tip-error-line: #c0342a;
 
     --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", Georgia, serif;
     --sans: "Noto Sans SC", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -850,7 +850,7 @@ img { max-width: 100%; height: auto; }
     --tip-success-bg: #1d241f; --tip-success-fg: #b7cdbd; --tip-success-line: #6f9277;
     --tip-info-bg: #1a2126;    --tip-info-fg: #aec9da;    --tip-info-line: #5f8fae;
     --tip-warning-bg: #25211a; --tip-warning-fg: #dcc094; --tip-warning-line: #b98a44;
-    --tip-error-bg: #241c1a;   --tip-error-fg: #e0b0a5;   --tip-error-line: #c0705c;
+    --tip-error-bg: #341413;   --tip-error-fg: #ffb9ab;   --tip-error-line: #ef5a42;
 
     color-scheme: dark;
 }
@@ -1097,7 +1097,12 @@ img { max-width: 100%; height: auto; }
 
 /* 提示框：收紧间距，标签加重 */
 .tip {
-    margin: 1.45em 0;
+    margin: 1.05em 0;
+}
+
+/* 连着两个提示框时再收一点，别让两块之间空出一段 */
+.tip + .tip {
+    margin-top: 0.55em;
 }
 
 .tip-label {
@@ -1137,6 +1142,19 @@ img { max-width: 100%; height: auto; }
 .tip-info .tip-icon    { color: var(--tip-info-fg); }
 .tip-warning .tip-icon { color: var(--tip-warning-fg); }
 .tip-error .tip-icon   { color: var(--tip-error-fg); }
+
+/* 错误框比其它三种更“硬”：竖线加粗、图标描重一点，避免和注意框混在一起 */
+.tip-error {
+    border-left-width: 4px;
+}
+
+.tip-error .tip-icon svg {
+    stroke-width: 1.9;
+}
+
+.tip-body {
+    display: block;
+}
 
 .tip-body p { margin: 0 0 0.7em; }
 .tip-body p:last-child { margin-bottom: 0; }

@@ -9,7 +9,7 @@
  *
  * @package 一瞬
  * @author yanjie233
- * @version 0.1.0
+ * @version 0.1.1
  * @link https://github.com/yanjie233/yishun
  */
 
@@ -260,14 +260,18 @@ function yishun_content($archive)
         'success' => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="M6.4 10.2l2.4 2.4 4.8-5"/></svg>',
         'info'    => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="M10 9v5"/><path d="M10 6.4v.2"/></svg>',
         'warning' => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.6l7.2 13H2.8z"/><path d="M10 7.6v4.2"/><path d="M10 14.2v.2"/></svg>',
-        'error'   => '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="M7.4 7.4l5.2 5.2"/><path d="M12.6 7.4l-5.2 5.2"/></svg>',
+        /* 错误：实心红底 + 挖空的叉，和另外三个空心线条图标一眼能分开 */
+        'error'   => '<svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8.2" fill="currentColor"/>'
+            . '<path d="M7.5 7.5l5 5M12.5 7.5l-5 5" stroke="var(--tip-error-bg)" stroke-width="1.8" stroke-linecap="round"/></svg>',
     ];
 
     foreach ($icons as $kind => $icon) {
         $content = preg_replace(
             '/\{cat_tips_' . $kind . '[^}]*\}([\s\S]*?)\{\/cat_tips_' . $kind . '\}/',
-            '<div class="tip tip-' . $kind . '"><span class="tip-icon" aria-hidden="true">' . $icon
-            . '</span><div class="tip-body">${1}</div></div>',
+            /* 用 span 输出：Markdown 会把整段包进 <p>，块级 <div> 会变成非法 <p><div>，
+               浏览器拆分后每个框周围多出一圈空段落，看起来就是“间隔太大” */
+            '<span class="tip tip-' . $kind . '"><span class="tip-icon" aria-hidden="true">' . $icon
+            . '</span><span class="tip-body">${1}</span></span>',
             $content
         );
     }
