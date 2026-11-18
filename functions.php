@@ -37,6 +37,15 @@ function themeConfig($form)
     );
     $form->addInput($footerNote);
 
+    $tagline = new \Typecho\Widget\Helper\Form\Element\Text(
+        'tagline',
+        null,
+        '',
+        _t('站点副标题'),
+        _t('填了会接在首页标题后面（站点名 · 副标题），也让偏短的归档页标题更完整')
+    );
+    $form->addInput($tagline);
+
     $cnMonth = new \Typecho\Widget\Helper\Form\Element\Radio(
         'cnMonth',
         ['1' => _t('中文（五月）'), '0' => _t('英文缩写（MAY）')],
@@ -54,6 +63,15 @@ function themeConfig($form)
         _t('按正文字数估算，中文约 400 字/分钟')
     );
     $form->addInput($showReading);
+
+    $showViews = new \Typecho\Widget\Helper\Form\Element\Radio(
+        'showViews',
+        ['1' => _t('显示'), '0' => _t('隐藏')],
+        '1',
+        _t('显示阅读量'),
+        _t('按单篇文章的真实访问累计，同一浏览器同一场会话只记一次；关掉后模板不输出也不计数')
+    );
+    $form->addInput($showViews);
 
     $icp = new \Typecho\Widget\Helper\Form\Element\Text(
         'icp',
@@ -121,6 +139,349 @@ function themeFields($layout)
         _t('填了就代替自动截取，显示在列表和搜索结果里')
     );
     $layout->addItem($abstract);
+}
+
+/**
+ * 只给「文章」加 AI 标识开关（Typecho 的 themePostFields 钩子，独立页面不会出现）。
+ * 这是主题默认字段，每次保存都会提交，不会被 applyFields() 当成脏字段删掉。
+ */
+function themePostFields($layout)
+{
+    $ai = new \Typecho\Widget\Helper\Form\Element\Radio(
+        'ai_declare',
+        [
+            'off'     => _t('关闭提示'),
+            'full'    => _t('本文由人工智能生成'),
+            'partial' => _t('本文部分由人工智能生成'),
+        ],
+        'off',
+        _t('AI 生成标识'),
+        _t('「本文由人工智能生成」在正文前标注、列表页显示机器人图标；「本文部分由人工智能生成」在正文后标注、列表页显示半人半机器人图标')
+    );
+    $layout->addItem($ai);
+}
+
+/* ============================ AI 生成标识 ============================ */
+
+/**
+ * 读一篇文章的 AI 标识：off / full（全文生成）/ partial（部分生成）。
+ * 存在主题默认字段 ai_declare 里；字段缺失（老文章）一律当 off。
+ */
+function yishun_ai_mode($archive)
+{
+    try {
+        $value = (string) ($archive->fields->ai_declare ?? '');
+    } catch (\Throwable $e) {
+        return 'off';
+    }
+    return in_array($value, ['full', 'partial'], true) ? $value : 'off';
+}
+
+/** 机器人图标：全文生成 */
+function yishun_ai_icon_robot()
+{
+    return '<svg class="ai-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+        . 'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        /* 天线 */
+        . '<path d="M10 5.6V3.4"/><circle cx="10" cy="2.6" r=".9"/>'
+        /* 头 */
+        . '<rect x="3.9" y="5.6" width="12.2" height="10.2" rx="3"/>'
+        /* 眼 + 嘴 */
+        . '<circle cx="7.5" cy="10.2" r="1.1"/><circle cx="12.5" cy="10.2" r="1.1"/>'
+        . '<path d="M8.2 13.1h3.6"/>'
+        . '</svg>';
+}
+
+/** 半人半机器人图标：部分生成（左半染色+人眼=人，中缝+右半方眼与直天线=机器） */
+function yishun_ai_icon_half()
+{
+    return '<svg class="ai-icon ai-icon-half" viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+        . 'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        /* 头（圆头，和机器人的圆角方头靠轮廓就能分开） */
+        . '<circle cx="10" cy="10.6" r="6.3"/>'
+        /* 左半染色 + 中缝：13px 下「一半有东西」比纯线框好认 */
+        . '<path d="M10 4.3a6.3 6.3 0 0 0 0 12.6z" fill="currentColor" fill-opacity=".55" stroke="none"/>'
+        . '<path d="M10 4.4v12.4" stroke-width="1.3"/>'
+        /* 人眼（圆）+ 机器眼（方），左右各一只 */
+        . '<circle cx="6.7" cy="9.8" r="1.05" stroke-width="1.25"/>'
+        . '<rect x="11.9" y="8.8" width="2.4" height="2.4" rx=".45" stroke-width="1.25"/>'
+        /* 直天线：斜天线在 13px 下会被看成水果梗 */
+        . '<path d="M14.4 5.4V3.6" stroke-width="1.25"/>'
+        . '</svg>';
+}
+
+/** 按模式取图标 */
+function yishun_ai_icon($mode)
+{
+    if ('full' === $mode) {
+        return yishun_ai_icon_robot();
+    }
+    if ('partial' === $mode) {
+        return yishun_ai_icon_half();
+    }
+    return '';
+}
+
+/** 文章页的提示文案：全文生成在正文前，部分生成在正文后 */
+function yishun_ai_notice_text($mode)
+{
+    if ('full' === $mode) {
+        return '本文使用人工智能生成并发布';
+    }
+    if ('partial' === $mode) {
+        return '本文部分内容由人工智能生成';
+    }
+    return '';
+}
+
+/** 列表页图标上的说明文字（悬停 / 读屏） */
+function yishun_ai_label($mode)
+{
+    if ('full' === $mode) {
+        return '本文由人工智能生成';
+    }
+    if ('partial' === $mode) {
+        return '本文部分由人工智能生成';
+    }
+    return '';
+}
+
+/** 正文前的提示（全文生成）；正文后的提示（部分生成）由模板直接调用 */
+function yishun_ai_notice($mode, $position)
+{
+    if ('full' !== $mode || 'before' !== $position) {
+        if ('partial' !== $mode || 'after' !== $position) {
+            return;
+        }
+    }
+
+    echo '<p class="ai-notice ai-notice-' . ($position === 'before' ? 'full' : 'partial') . '">'
+        . yishun_ai_icon($mode)
+        . '<span>' . htmlspecialchars(yishun_ai_notice_text($mode), ENT_QUOTES, 'UTF-8') . '</span>'
+        . '</p>';
+}
+
+/* ============================ 阅读量 ============================ */
+
+/**
+ * 阅读量存在主题自己的表里，不写进 typecho_fields。
+ *
+ * 为什么不能用自定义字段：Typecho 保存文章时会走 EditTrait::applyFields()，
+ * 表单没提交的字段一律删除，阅读量一存进 table.fields 就会在编辑文章时被清零。
+ *
+ * 表结构（建表语句见 README）：
+ *   cid int unsigned PRIMARY KEY, views int unsigned DEFAULT 0, updated int unsigned DEFAULT 0
+ */
+
+/** 表在不在（结果缓存到本次请求；缺表时按需建一次，缺权限就整站静默降级） */
+function yishun_views_available()
+{
+    static $ok = null;
+    if ($ok !== null) {
+        return $ok;
+    }
+
+    $db = \Typecho\Db::get();
+    try {
+        $db->fetchRow($db->select()->from('table.postviews')->limit(1));
+        return $ok = true;
+    } catch (\Throwable $e) {
+        /* 别处新装主题时表还不存在，顺手建一张；没建表权限就当功能不存在 */
+    }
+
+    try {
+        $db->query(
+            'CREATE TABLE IF NOT EXISTS ' . $db->getPrefix() . 'postviews ('
+            . 'cid int(10) unsigned NOT NULL,'
+            . 'views int(10) unsigned NOT NULL DEFAULT 0,'
+            . 'updated int(10) unsigned NOT NULL DEFAULT 0,'
+            . 'PRIMARY KEY (cid)'
+            . ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
+        $db->fetchRow($db->select()->from('table.postviews')->limit(1));
+        return $ok = true;
+    } catch (\Throwable $e) {
+        return $ok = false;
+    }
+}
+
+/** 主题设置里是否开启（默认开） */
+function yishun_views_enabled()
+{
+    try {
+        return ((string) (\Widget\Options::alloc()->showViews ?? '1')) !== '0';
+    } catch (\Throwable $e) {
+        return true;
+    }
+}
+
+/** 记一次阅读：单篇文章、GET、已发布、非后台预览，同一浏览器同一会话只记一次 */
+function yishun_count_view($archive)
+{
+    if (!yishun_views_enabled() || !yishun_views_available()) {
+        return;
+    }
+
+    /* 后台预览 / 编辑器里的预览页不算 */
+    if (defined('__TYPECHO_ADMIN__')) {
+        return;
+    }
+
+    if (($archive->type ?? '') !== 'post' || ($archive->status ?? '') !== 'publish') {
+        return;
+    }
+
+    /* 只算一次正常浏览：POST（密码解锁表单等）、HEAD（监控探活）都不算 */
+    try {
+        if (!\Typecho\Request::getInstance()->isGet()) {
+            return;
+        }
+    } catch (\Throwable $e) {
+        return;
+    }
+
+    if (yishun_view_is_bot()) {
+        return;
+    }
+
+    $cid = (int) $archive->cid;
+    if ($cid <= 0) {
+        return;
+    }
+
+    if (yishun_view_seen($cid)) {
+        return;
+    }
+    yishun_view_remember($cid);
+
+    try {
+        $db = \Typecho\Db::get();
+        $now = time();
+        $db->query(
+            'INSERT INTO ' . $db->getPrefix() . "postviews (cid, views, updated) VALUES ({$cid}, 1, {$now})"
+            . " ON DUPLICATE KEY UPDATE views = views + 1, updated = {$now}"
+        );
+    } catch (\Throwable $e) {
+        /* 记不上就当没记，页面照常输出 */
+        return;
+    }
+
+    /* 刚加过 1，模板里读到的就是这个新值 */
+    yishun_views_cache($cid, null);
+}
+
+/** 爬虫/预取/预览链接不算阅读：UA 黑名单 + Sec-Purpose: prefetch */
+function yishun_view_is_bot()
+{
+    $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    /* 正常浏览器一定带 UA；空 UA 基本都是脚本 */
+    if ($ua === '') {
+        return true;
+    }
+    if (preg_match(
+        '/bot|crawl|spider|slurp|archiver|facebookexternalhit|embedly|quora link preview|'
+        . 'headless|phantom|puppeteer|playwright|lighthouse|pingdom|uptime|monitor|'
+        . 'curl|wget|python-requests|go-http-client|okhttp|java\/|axios|node-fetch|'
+        . 'feedfetcher|rss|preview|scrape|validator|checker/',
+        $ua
+    )) {
+        return true;
+    }
+
+    /* Chrome 的预取/预渲染，以及链接预览机器人 */
+    foreach (['HTTP_SEC_PURPOSE', 'HTTP_PURPOSE', 'HTTP_X_PURPOSE', 'HTTP_X_MOZ'] as $key) {
+        $val = strtolower((string) ($_SERVER[$key] ?? ''));
+        if ($val !== '' && (str_contains($val, 'prefetch') || str_contains($val, 'prerender') || str_contains($val, 'preview'))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/** 本会话是否已记过这篇（cookie 里存 cid 列表，最多 30 个） */
+function yishun_view_seen($cid)
+{
+    $seen = (string) \Typecho\Cookie::get('views_read', '');
+    if ($seen === '') {
+        return false;
+    }
+    return in_array((int) $cid, array_map('intval', explode(',', $seen)), true);
+}
+
+function yishun_view_remember($cid)
+{
+    $seen = (string) \Typecho\Cookie::get('views_read', '');
+    $list = $seen === '' ? [] : array_map('intval', explode(',', $seen));
+    $list[] = (int) $cid;
+    $list = array_slice(array_values(array_unique($list)), -30);
+    \Typecho\Cookie::set('views_read', implode(',', $list));
+}
+
+/**
+ * 读一个 cid 的阅读量；表缺失或出错返回 null（模板据此整段不输出）。
+ * 传 $value 为 int 时写入缓存，传 null 只清缓存。
+ */
+function yishun_views_cache($cid, $value = false)
+{
+    static $cache = [];
+    $cid = (int) $cid;
+
+    if ($value === null) {
+        unset($cache[$cid]);
+        return null;
+    }
+    if ($value !== false) {
+        return $cache[$cid] = (int) $value;
+    }
+    return $cache[$cid] ?? false;
+}
+
+function yishun_get_views($cid)
+{
+    $cid = (int) $cid;
+    if ($cid <= 0) {
+        return null;
+    }
+
+    $cached = yishun_views_cache($cid);
+    if ($cached !== false) {
+        return $cached;
+    }
+
+    if (!yishun_views_available()) {
+        return null;
+    }
+
+    try {
+        $db = \Typecho\Db::get();
+        $row = $db->fetchRow($db->select('views')->from('table.postviews')->where('cid = ?', $cid)->limit(1));
+    } catch (\Throwable $e) {
+        return null;
+    }
+
+    return yishun_views_cache($cid, $row ? (int) $row['views'] : 0);
+}
+
+/** 数字转人话：0 = 还没有人读过，过万用「万」 */
+function yishun_views_text($views)
+{
+    if (!is_int($views) || $views <= 0) {
+        return '还没有人读过';
+    }
+    if ($views >= 10000) {
+        return rtrim(rtrim(number_format($views / 10000, 1, '.', ''), '0'), '.') . ' 万次阅读';
+    }
+    return $views . ' 次阅读';
+}
+
+/** 眼睛图标：和提示框那套线条图标同规格（20 格、1.6 描边、圆头），跟着字号缩放 */
+function yishun_views_icon()
+{
+    return '<svg class="views-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" '
+        . 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        . '<path d="M1.7 10S5 4.5 10 4.5 18.3 10 18.3 10 15 15.5 10 15.5 1.7 10 1.7 10z"/>'
+        . '<circle cx="10" cy="10" r="2.6"/></svg>';
 }
 
 /* ============================ 基础工具 ============================ */
@@ -204,6 +565,8 @@ function yishun_excerpt($archive, $length = 150)
 function yishun_meta(\Widget\Archive $archive, $withReading = true)
 {
     $minutes = $withReading ? yishun_reading_time($archive->text) : 0;
+    /* 表缺失或设置里关掉时是 null，整段不输出 */
+    $views = yishun_views_enabled() ? yishun_get_views($archive->cid) : null;
     ?>
     <?php
     /* 分类为空时不要留下开头的分隔点 */
@@ -220,7 +583,21 @@ function yishun_meta(\Widget\Archive $archive, $withReading = true)
             <span class="entry-time"><?php echo $minutes; ?> 分钟读完</span>
             <span class="entry-dot" aria-hidden="true"></span>
         <?php endif; ?>
+        <?php if ($views !== null): ?>
+            <span class="entry-views"><?php echo yishun_views_icon(); ?><?php echo htmlspecialchars(yishun_views_text($views), ENT_QUOTES, 'UTF-8'); ?></span>
+            <span class="entry-dot" aria-hidden="true"></span>
+        <?php endif; ?>
         <a class="entry-comments" href="<?php $archive->permalink() ?>#comments"><?php $archive->commentsNum('没有评论', '1 条评论', '%d 条评论'); ?></a>
+        <?php
+        /* AI 标识：放在评论数后面，只给个图标，全文生成是机器人、部分生成是半人半机 */
+        $aiMode = yishun_ai_mode($archive);
+        if ($aiMode !== 'off'):
+        ?>
+            <span class="entry-dot" aria-hidden="true"></span>
+            <span class="entry-ai" role="img"
+                  aria-label="<?php echo htmlspecialchars(yishun_ai_label($aiMode), ENT_QUOTES, 'UTF-8'); ?>"
+                  title="<?php echo htmlspecialchars(yishun_ai_label($aiMode), ENT_QUOTES, 'UTF-8'); ?>"><?php echo yishun_ai_icon($aiMode); ?></span>
+        <?php endif; ?>
     </p>
     <?php
 }

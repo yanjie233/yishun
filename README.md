@@ -1,7 +1,7 @@
 # 一瞬（Yishun）
 
 > **⚠️ 早期版本提醒**
-> 目前处于主题的初期阶段（0.1.0），排版和细节还在打磨，**可能存在显示上的 bug**。
+> 目前处于主题的初期阶段（0.2.0），排版和细节还在打磨，**可能存在显示上的 bug**。
 > 遇到问题欢迎踊跃反馈 🥰 —— 直接开 [issue](https://github.com/yanjie233/yishun/issues) 就行，
 > 最好带上截图、浏览器和屏幕宽度。
 
@@ -16,7 +16,8 @@
 
 - **纸感排版**：米色纸底、衬线正文、细线分隔，没有圆角与投影，阅读时只剩文字。
 - **日期印章**：列表左侧一枚印章式日期（月 / 日 / 年），文章页留给标题和正文。
-- **昼夜双色**：右上角一键切换，偏好存在本地，刷新不闪；`prefers-color-scheme` 只作首次默认。
+- **昼夜双色**：右上角一键切换，切换时以按钮为圆心的圆形光圈把整套配色一起换掉（View Transitions，620ms），
+  不支持时退化为整页配色过渡；偏好存在本地，刷新不闪；`prefers-color-scheme` 只作首次默认。
 - **插件友好**：走 Typecho 的 `$this->header()` / `$this->footer()` 与内容钩子，不针对某个插件写死。
 - **提示框**：`{cat_tips_*}` 四类提示（成功 / 说明 / 注意 / 错误），图标随主题描边。
 - **播放条**：横向一条，封面 + 曲名/歌手 + 进度；网易云曲目按需解析，失败会明确告诉你原因。
@@ -32,7 +33,7 @@
 
 **方式一：压缩包（推荐）**
 
-下载 [Release](https://github.com/yanjie233/yishun/releases) 里的 `yishun-theme-0.1.0.zip`，
+下载 [Release](https://github.com/yanjie233/yishun/releases) 里的 `yishun-theme-0.2.0.zip`，
 解压后得到 `yishun/` 目录，整个放进 `usr/themes/` 即可（文件名已经是 `yishun`，不用改名）。
 
 **方式二：git clone**
@@ -51,6 +52,7 @@ git clone https://github.com/yanjie233/yishun.git yishun
 | 头像地址 | 站名左边的小圆头像；留空则用管理员邮箱的 Cravatar |
 | 页脚补充说明 | 版权行下面的一行小字 |
 | 显示阅读时长 | 按正文字数估算（中文约 400 字/分钟） |
+| 显示阅读量 | 每篇的真实访问次数，同一浏览器同一会话只记一次；关掉后既不显示也不计数 |
 | 月份写法 | 日期印章里的月份用中文（八月）还是英文缩写（AUG） |
 | 备案号 / 备案链接 / 公安备案 | 填了才会出现在页脚 |
 | 网易云接口地址 | 自建 [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) 的地址，默认用作者的公共实例 |
@@ -58,6 +60,53 @@ git clone https://github.com/yanjie233/yishun.git yishun
 | 网易云 Cookie | 想听 VIP 曲目全曲时需要，可在下面的登录页里获取 |
 
 > 换了头像后要重新生成站点图标（见下文「工具箱」）。
+
+## 阅读量
+
+阅读量存在主题自己的表里，不占用 `typecho_fields`（那个表在保存文章时会被整体覆盖，
+存进去的数字会被清零）。首次访问时主题会自动建表；没有建表权限时功能自动关闭，不会报错：
+
+```sql
+CREATE TABLE IF NOT EXISTS `typecho_postviews` (
+  `cid` int(10) unsigned NOT NULL,
+  `views` int(10) unsigned NOT NULL DEFAULT 0,
+  `updated` int(10) unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY (`cid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+计数规则：只统计单篇文章页（独立页面不计）、只统计 `publish` 状态、只统计 GET；
+爬虫 UA、`Sec-Purpose: prefetch` 预取、后台预览都不算；同一浏览器同一场会话内同一篇只记一次
+（cookie 里存已读 cid，最多 30 个）。列表和文章页的数字是同一条记录，不会出现两处不一致。
+
+## AI 生成标识
+
+写文章页的「自定义字段」里多一个 `AI 生成标识`（默认「关闭提示」），三选一：
+
+| 选项 | 列表页（评论数后面） | 文章页 |
+| --- | --- | --- |
+| 关闭提示 | 不显示 | 不显示 |
+| 本文由人工智能生成 | 机器人图标 | 分类之后、正文之前：本文使用人工智能生成并发布 |
+| 本文部分由人工智能生成 | 半人半机器人图标 | 正文之后：本文部分内容由人工智能生成 |
+
+存的是自定义字段 `ai_declare`（`off` / `full` / `partial`）。它用 `themePostFields()` 注册，
+所以只出现在文章编辑页，独立页面不会有这个开关；老文章没有该字段时按 `off` 处理。
+列表图标带 `aria-label` 与 `title`，鼠标悬停和读屏都能读到；正文里的声明属于要被人看见的内容，
+用的是 `--ink-mid`（对比度 6.7:1 浅色 / 8.3:1 深色），不是注脚灰。
+
+## 昼夜切换
+
+点右上角开关时，以按钮当前位置为圆心做一块圆形遮罩：入夜从按钮铺开、天亮缩回按钮，620ms，
+背景、正文、日期印章、分隔线、提示框、播放条由同一条波前一起扫过。
+
+实现是 View Transitions：`document.startViewTransition()` 里改 `data-theme`，再用 `clip-path: circle()`
+在整页快照上做裁切，圆心和半径（取到最远那个角，保证盖满视口）在点击那一刻写进
+`--vt-x / --vt-y / --vt-r`。
+
+- 入夜 `cubic-bezier(.25,.1,.25,1)`，天亮用镜像曲线，两个方向的手感对称
+- 支持 `prefers-reduced-motion`：直接切，不播动画
+- 不支持 View Transitions 的浏览器（Firefox 目前还没有）退化为整页配色过渡，不会硬跳
+- 按钮不单独分组，跟着整页快照走 —— 入夜它第一个变暗（圆心的种子），天亮它最后一个变亮
 
 ## 短代码
 
@@ -108,6 +157,7 @@ yishun/
 ├── style.css            全部样式，顶部是设计变量
 ├── screenshot.png
 ├── assets/player.js     播放条（原生 audio，不依赖 APlayer）
+├── assets/theme.js      昼夜切换（View Transitions + 圆形遮罩）
 ├── inc/                 music.php / music-login.php / music-store.php / sitemap.php
 └── tools/make-favicon.php
 ```

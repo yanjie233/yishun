@@ -274,6 +274,78 @@ img { max-width: 100%; height: auto; }
 .entry-meta a { color: var(--ink-faint); }
 .entry-meta a:hover { color: var(--accent); }
 
+/* 阅读量：数字对齐，换个数字不跳宽；眼睛图标跟着文字颜色和字号走 */
+.entry-views,
+.piece-views {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32em;
+    font-variant-numeric: tabular-nums;
+}
+
+.entry-views {
+    color: var(--ink-faint);
+}
+
+.views-icon {
+    width: 1.05em;
+    height: 1.05em;
+    flex: none;
+    /* 图标的视觉重心比文字基线略高，往下推半像素级的一点 */
+    transform: translateY(-0.02em);
+}
+
+/* AI 生成标识：列表页评论数后面一枚小图标 */
+.entry-ai {
+    display: inline-flex;
+    align-items: center;
+    /* 和正文里的声明同色：14px 的细线图标用注脚灰只有 2.9:1，偏淡，
+       而这枚图标是要被认出来的，所以用 ink-mid */
+    color: var(--ink-mid);
+    /* 图标本身没有文字，撑出可点/可悬停的面积 */
+    padding: 0.1em 0.05em;
+    cursor: help;
+}
+
+/* 列表里比正文注脚略大：13px 的两半细节（人眼/方眼）太小就糊成一团 */
+.entry-ai .ai-icon {
+    width: 1.2em;
+    height: 1.2em;
+}
+
+.ai-icon {
+    width: 1.05em;
+    height: 1.05em;
+    flex: none;
+    transform: translateY(-0.02em);
+}
+
+/* ---------- AI 生成提示（文章页）---------- */
+.ai-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0 0 1.4rem var(--gutter);
+    max-width: var(--measure);
+    /* 声明类文字用 ink-mid：仍是灰的，但对比度 6.7:1（浅）/ 8.3:1（深），
+       比注脚灰的 2.9:1 更耐读——这条是要被看见的，不是装饰 */
+    color: var(--ink-mid);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+}
+
+.ai-notice .ai-icon {
+    width: 1.15em;
+    height: 1.15em;
+}
+
+/* 正文后的那条：贴住正文尾部，和下面「上一篇/下一篇」的分隔线留一行左右的呼吸 */
+.ai-notice-partial {
+    margin-top: 0.4rem;
+    margin-bottom: 1.2rem;
+}
+
 .entry-dot {
     width: 3px;
     height: 3px;
@@ -1609,3 +1681,54 @@ img { max-width: 100%; height: auto; }
 }
 
 .prose .track-error { cursor: pointer; }
+/* ---------------------------------------------------------------- 昼夜开关
+ * 圆形遮罩切换：入夜时以按钮为圆心把夜色铺满整页，天亮时把夜色收回按钮。
+ * 两套配色的整页快照由 View Transitions 提供，所以纸色、墨色、提示框、
+ * 播放条是被同一条波前一起扫过去的，不会各走各的。
+ * 圆心和半径在点击那一刻由 assets/theme.js 写进 --vt-* 三个自定义属性。
+ * 不支持 View Transitions 的浏览器退化为整页配色过渡（不硬跳）。
+ */
+/* 关掉默认的整页交叉淡入，改用裁切 */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+/* 夜色那层永远盖在上面：入夜是 new(root) 在扩散，天亮是 old(root) 在收缩 */
+:root[data-theme="dark"]::view-transition-new(root),
+:root[data-theme="light"]::view-transition-old(root) {
+    z-index: 2;
+}
+
+@keyframes theme-unveil {
+    from { clip-path: circle(0 at var(--vt-x) var(--vt-y)); }
+    to   { clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y)); }
+}
+
+@keyframes theme-veil {
+    from { clip-path: circle(var(--vt-r) at var(--vt-x) var(--vt-y)); }
+    to   { clip-path: circle(0 at var(--vt-x) var(--vt-y)); }
+}
+
+:root[data-theme="dark"]::view-transition-new(root) {
+    animation: theme-unveil 620ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
+:root[data-theme="light"]::view-transition-old(root) {
+    animation: theme-veil 620ms cubic-bezier(0.75, 0, 0.75, 0.9) both;
+}
+
+/* 退路：没有 View Transitions 时让所有主题色一起过渡 */
+html.is-theme-fading * {
+    transition:
+        background-color 620ms cubic-bezier(0.25, 0.1, 0.25, 1),
+        color 620ms cubic-bezier(0.25, 0.1, 0.25, 1),
+        border-color 620ms cubic-bezier(0.25, 0.1, 0.25, 1),
+        fill 620ms cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) { animation: none; }
+}

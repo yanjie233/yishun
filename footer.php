@@ -31,6 +31,7 @@
 <?php $this->footer(); ?>
 <script>window.YISHUN_THEME_URL = "<?php $this->options->themeUrl(); ?>";</script>
 <script src="<?php $this->options->themeUrl('assets/player.js?v=' . @filemtime(__DIR__ . '/assets/player.js')); ?>" defer></script>
+<script src="<?php $this->options->themeUrl('assets/theme.js?v=' . @filemtime(__DIR__ . '/assets/theme.js')); ?>" defer></script>
 <script>
 (function () {
     var bar = document.getElementById('progress');
@@ -47,26 +48,6 @@
             if (!frame) frame = requestAnimationFrame(paint);
         }, { passive: true });
         paint();
-    }
-
-    /* 昼夜开关 */
-    var root = document.documentElement;
-    var btn = document.getElementById('theme-toggle');
-    var apply = function (theme) {
-        root.setAttribute('data-theme', theme);
-        try { localStorage.setItem('yishun-theme', theme); } catch (e) {}
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', theme === 'dark' ? '#15171b' : '#e9e8e2');
-        if (btn) {
-            btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-            btn.setAttribute('aria-label', theme === 'dark' ? '切换到浅色' : '切换到深色');
-        }
-    };
-    apply(root.getAttribute('data-theme') || 'light');
-    if (btn) {
-        btn.addEventListener('click', function () {
-            apply(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-        });
     }
 })();
 </script>

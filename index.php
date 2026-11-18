@@ -7,7 +7,7 @@
  *
  * @package 一瞬
  * @author yanjie233
- * @version 0.1.1
+ * @version 0.2.0
  * @link https://github.com/yanjie233/yishun
  * @since 1.3.0
  */

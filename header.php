@@ -11,6 +11,18 @@ $wbIsIndex   = $this->is('index');
 $wbIsSearch  = $this->is('search');
 $wbIs404     = !empty($GLOBALS['wbIs404']);
 $wbSiteTitle = (string) $wbOptions->title;
+/* 站点副标题：首页标题用它补足长度，归档页标题偏短时也补一段 */
+$wbTagline   = trim((string) ($wbOptions->tagline ?? ''));
+$wbSiteDesc  = trim((string) $wbOptions->description);
+
+/* 归档类型：描述文案和空归档的 noindex 都要用 */
+$wbArchiveKind = '';
+foreach (['category' => '分类', 'tag' => '标签', 'author' => '作者', 'date' => '归档'] as $wbKind => $wbKindLabel) {
+    if ($this->is($wbKind)) {
+        $wbArchiveKind = $wbKindLabel;
+        break;
+    }
+}
 
 ob_start();
 $this->archiveTitle([
@@ -21,21 +33,63 @@ $this->archiveTitle([
 ], '', ' · ');
 $wbPageTitle = trim(ob_get_clean());
 $wbPageTitle = rtrim($wbPageTitle, ' ·');
+if ($wbPageTitle === '' && $wbIs404) {
+    $wbPageTitle = '页面不存在';
+}
+
 $wbFullTitle = $wbPageTitle !== '' ? $wbPageTitle . ' · ' . $wbSiteTitle : $wbSiteTitle;
+if ($wbIsIndex && $wbTagline !== '') {
+    /* 首页：站点名 · 副标题，避免只剩四五个字的短标题 */
+    $wbFullTitle = $wbSiteTitle . ' · ' . $wbTagline;
+} elseif ($wbTagline !== '' && !$wbIsPost && !$wbIsPage && !$wbIsIndex
+    && mb_strlen($wbFullTitle, 'UTF-8') < 18) {
+    $wbFullTitle .= ' · ' . $wbTagline;
+}
 
 $wbPath      = parse_url((string) $this->request->getRequestUrl(), PHP_URL_PATH);
 $wbCanonical = rtrim((string) $wbOptions->siteUrl, '/') . ($wbPath ?: '/');
 
+/* 本篇/本归档的公开篇数，用来判断是否为薄页面、并写进描述 */
+$wbTotal = 0;
+if ($wbIsIndex || $wbIsPost || $wbIsPage || $wbArchiveKind !== '') {
+    try {
+        $wbTotal = (int) $this->getTotal();
+    } catch (\Throwable $e) {
+        $wbTotal = 0;
+    }
+}
+
 $wbDesc = '';
 if ($wbIsPost || $wbIsPage) {
     $wbDesc = yishun_text($this, 140);
+} elseif ($wbArchiveKind !== '') {
+    /* 分类/标签自己填了描述就用它；Typecho 默认会把站点简介灌进来，需要排除 */
+    $wbOwnDesc = '';
+    try {
+        $wbOwnDesc = trim((string) $this->getArchiveDescription());
+    } catch (\Throwable $e) {
+        $wbOwnDesc = '';
+    }
+    if ($wbOwnDesc !== '' && $wbOwnDesc !== $wbSiteDesc) {
+        $wbDesc = $wbOwnDesc . ($wbTotal > 0 ? ' 共 ' . $wbTotal . ' 篇。' : '');
+    } elseif ($wbTotal > 0) {
+        $wbDesc = '「' . $wbPageTitle . '」' . $wbArchiveKind . '下的全部文章，共 ' . $wbTotal . ' 篇。';
+    }
 }
 if ($wbDesc === '') {
-    $wbDesc = trim((string) $wbOptions->description);
+    $wbDesc = $wbSiteDesc;
 }
 if ($wbDesc === '') {
     $wbDesc = $wbSiteTitle;
 }
+/* 归档页的描述偏短时补上站点简介，避免被判成 “too short” */
+if ($wbArchiveKind !== '' && mb_strlen($wbDesc, 'UTF-8') < 50
+    && $wbSiteDesc !== '' && mb_strpos($wbDesc, $wbSiteDesc) === false) {
+    $wbDesc = trim($wbDesc . $wbSiteDesc);
+}
+
+/* 空归档是典型的薄页面：不索引，但保留 follow */
+$wbNoIndex = $wbIs404 || $wbIsSearch || ($wbArchiveKind !== '' && $wbTotal === 0);
 
 $wbImage = '';
 if (($wbIsPost || $wbIsPage) && preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', (string) $this->content, $m)) {
@@ -113,7 +167,7 @@ $wbLd = array_filter($wbLd, static fn($v) => $v !== null && $v !== '' && $v !== 
     <title><?php echo htmlspecialchars($wbFullTitle, ENT_QUOTES); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($wbDesc, ENT_QUOTES); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($wbCanonical, ENT_QUOTES); ?>">
-    <?php if ($wbIs404 || $wbIsSearch): ?>
+    <?php if ($wbNoIndex): ?>
     <meta name="robots" content="noindex, follow">
     <?php else: ?>
     <meta name="robots" content="index, follow, max-image-preview:large">
